@@ -11,7 +11,7 @@ import UIKit
 class TodoListViewController: UITableViewController {
     //by simply inheriting a UITableViewController and adding a TableView to the storyboard instead of a UIViewController, all of the IBOutlets and being the delegate/datasource is all taken care of
     
-    let itemArray = ["Find Mike", "Buy Eggos", "Destory Demogorgon"]
+    var itemArray = ["Find Mike", "Buy Eggos", "Destory Demogorgon"]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,6 +62,42 @@ class TodoListViewController: UITableViewController {
         //flashes gray for a second but then goes back to being white
         
     }
+    
+    //MARK - Add New Items
+    
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        
+        var textField = UITextField()
+        //created so that this local variable can be accessed later and turned into alertTextField; before, alertTextField was a local variable inside a function, but now, it can be turned into a local variable inside this IBAction
+        
+        let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
+        //makes a new alert
+        
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            //what will happen once the user clicks the Add Item button on the our UIAlert
+            
+            self.itemArray.append(textField.text!)
+            //adds what we typed in the text field into an array
+            
+            self.tableView.reloadData()
+            //line is necessary to actually getting what we typed in the textfield into the cells
+            //MUST HAVE THIS LINE
+            
+        }
+        
+        alert.addTextField { (alertTextField) in
+            //this is creating a textfield inside the alert
+            alertTextField.placeholder = "Create new item"
+            textField = alertTextField
+            
+        }
+        
+        alert.addAction(action)
+        present(alert, animated: true, completion: nil)
+        //these two lines above are important to actually making the alert popup??!!??
+        
+    }
+    
     
     
 
