@@ -12,10 +12,20 @@ class TodoListViewController: UITableViewController {
     //by simply inheriting a UITableViewController and adding a TableView to the storyboard instead of a UIViewController, all of the IBOutlets and being the delegate/datasource is all taken care of
     
     var itemArray = ["Find Mike", "Buy Eggos", "Destory Demogorgon"]
+    
+    let defaults = UserDefaults.standard
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        
+        if let itemArray = defaults.array(forKey: "TodoListArray") as? [String] {
+            //changed 'itemArray = defaults.array(forKey: "TodoListArray") as! [String]'
+            ///into an if-statement that checks to see if a value for our array exists
+            itemArray = items
+            
+        }
+        
+
     }
     
     //MARK - Tableview Datasource Methods
@@ -78,6 +88,8 @@ class TodoListViewController: UITableViewController {
             
             self.itemArray.append(textField.text!)
             //adds what we typed in the text field into an array
+            
+            self.defaults.set(self.itemArray, forKey: "TodoListArray")
             
             self.tableView.reloadData()
             //line is necessary to actually getting what we typed in the textfield into the cells
