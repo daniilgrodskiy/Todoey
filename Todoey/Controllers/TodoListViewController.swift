@@ -11,19 +11,22 @@ import UIKit
 class TodoListViewController: UITableViewController {
     //by simply inheriting a UITableViewController and adding a TableView to the storyboard instead of a UIViewController, all of the IBOutlets and being the delegate/datasource is all taken care of
     
-    var itemArray = ["Find Mike", "Buy Eggos", "Destory Demogorgon"]
+    var itemArray = [Item]()
     
-    let defaults = UserDefaults.standard
+    let dataFilePath =  FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    //create a new plist in the path that represents the NSUserDefaults
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
-            //changed 'itemArray = defaults.array(forKey: "TodoListArray") as! [String]'
-            ///into an if-statement that checks to see if a value for our array exists
-            itemArray = items
-            
-        }
+        loadItems()
+        
+//        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
+//            //changed 'itemArray = defaults.array(forKey: "TodoListArray") as! [String]'
+//            ///into an if-statement that checks to see if a value for our array exists
+//            itemArray = items
+//        }
         
 
     }
@@ -43,7 +46,21 @@ class TodoListViewController: UITableViewController {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         
-        cell.textLabel?.text = itemArray[indexPath.row]
+        let item = itemArray[indexPath.row]
+        
+        cell.textLabel?.text = item.title
+        
+        //Ternary operator =>
+        //value = condition ? valueIfTrue : valueIfFalse
+        
+        cell.accessoryType = item.done ? .checkmark : .none
+        
+//        SAME AS
+//        if item.done == true {
+//            cell.accessoryType = .checkmark
+//        } else {
+//            cell.accessoryType = .none
+//        }
         
         return cell
         
@@ -53,20 +70,18 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         //function is used for selecting rows
+        //what happends when you tap on a cell
         
-        //print(itemArray[indexPath.row])
-        //gonna print the number of the specific cell row that is tapped
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        //tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        //affects the current cell
+//        SAME AS
+//        if itemArray[indexPath.row].done == false {
+//            itemArray[indexPath.row].done = true
+//        } else {
+//            itemArray[indexPath.row].done = false
+//        }
         
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
-        //affects accessoryType property and checks to see whether it already has a checkmark or not
-
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true)
         //flashes gray for a second but then goes back to being white
@@ -86,14 +101,16 @@ class TodoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once the user clicks the Add Item button on the our UIAlert
             
-            self.itemArray.append(textField.text!)
+            let newItem = Item()
+            newItem.title = textField.text!
+            
+            
+            self.itemArray.append(newItem)
             //adds what we typed in the text field into an array
             
-            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            self.saveItems()
             
-            self.tableView.reloadData()
-            //line is necessary to actually getting what we typed in the textfield into the cells
-            //MUST HAVE THIS LINE
+
             
         }
         
@@ -110,7 +127,33 @@ class TodoListViewController: UITableViewController {
         
     }
     
+    func saveItems() {
+        ////THIS IS THE CODE THAT ALLOWS US TO ENCODE THE DATA AND THEN SAVE IT IN Items.plist!!!
+        let encoder = PropertyListEncoder()
+
+        do {
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        } catch {
+            print("Error encoding item array, \(error)")
+        }
+        
+        self.tableView.reloadData()
+        //line is necessary to actually getting what we typed in the textfield into the cells
+        //MUST HAVE THIS LINE
+        
+    }
     
+    func loadItems() {
+        if let data =  try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            do {
+                itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print ("Error decoding item array, \(error)")
+            }
+        }
+    }
     
 
 
