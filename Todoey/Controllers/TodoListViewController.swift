@@ -7,20 +7,36 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
     //by simply inheriting a UITableViewController and adding a TableView to the storyboard instead of a UIViewController, all of the IBOutlets and being the delegate/datasource is all taken care of
     
     var itemArray = [Item]()
+    //an array of Item() objects
+    var selectedCategory : Category? {
+        didSet {
+            //all of this will happen when the optional selectedCategory is given a value
+            loadItems()
+            
+        }
+        
+    }
     
-    let dataFilePath =  FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
-    //create a new plist in the path that represents the NSUserDefaults
+//////CoreData Step 1 (declare context):
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //tapping into UIApplication class and getting the shared singleton object, which corresponds to the current app as an object, then tapping into its delegate, which has the datatype of an optional UIDelegate object, meaning that we need to cast it as our class, AppDelegate (both UIApplicationDelegate and AppDelegate inherit from the same class so it all works)
 
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        loadItems()
+        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
+        //create a new plist in the path that represents the NSUserDefaults
+        
+        //searchBar.delegate = self
+        
+        
         
 //        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
 //            //changed 'itemArray = defaults.array(forKey: "TodoListArray") as! [String]'
@@ -41,7 +57,7 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         //kind of like making an object
-        //"make an object of the cell identifier "ToDoItemCell" called cell [THIS IS NOT WHAT YOU'RE DOING BUT IT HELPS UNDERSTAND THIS ALL]
+        //"make an object of the cell identifier "ToDoItemCell" called cell" [THIS IS NOT WHAT YOU'RE DOING BUT IT HELPS UNDERSTAND THIS ALL]
         //let the text of each cell be determined by the item in the array and its associated row value
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
@@ -72,6 +88,14 @@ class TodoListViewController: UITableViewController {
         //function is used for selecting rows
         //what happends when you tap on a cell
         
+        //itemArray[indexPath.row].setValue("Completed", forKey: "title")
+        //example of code that can also be used; i.e. you wanted to change the title to be "Completed" when a cell is clicked on
+        
+        
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
+        
+        
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
 //        SAME AS
@@ -82,6 +106,7 @@ class TodoListViewController: UITableViewController {
 //        }
         
         saveItems()
+        ///saveItems() IS SO IMPORTANT OMG!! IT'S THE THING THAT SAVES THE ACTUAL ITEMS FROM THE CONTEXT INTO Core Data!! MUST HAVE IT TO TRANSFER ITEMS Context -> Core Data
         
         tableView.deselectRow(at: indexPath, animated: true)
         //flashes gray for a second but then goes back to being white
@@ -101,17 +126,24 @@ class TodoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once the user clicks the Add Item button on the our UIAlert
             
-            let newItem = Item()
-            newItem.title = textField.text!
+////////////CoreData Step 2 (define the context for Item class) (first line):
+            let newItem = Item(context: self.context)
+            //newItem is of type NSModelObject; think of this as being the ROW of a table
             
+            newItem.title = textField.text!
+            //we fill each ROW with a title
+            
+            newItem.done = false
+            //AND THEN well fill each ROW with a done state
+            
+            newItem.parentCategory = self.selectedCategory
+            //then we have to specify what the parentCategory would be
             
             self.itemArray.append(newItem)
             //adds what we typed in the text field into an array
             
+            
             self.saveItems()
-            
-
-            
         }
         
         alert.addTextField { (alertTextField) in
@@ -127,16 +159,14 @@ class TodoListViewController: UITableViewController {
         
     }
     
+////CoreData Step 3 (saveItems()):
     func saveItems() {
-        ////THIS IS THE CODE THAT ALLOWS US TO ENCODE THE DATA AND THEN SAVE IT IN Items.plist!!!
-        let encoder = PropertyListEncoder()
-
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            try context.save()
         } catch {
-            print("Error encoding item array, \(error)")
+            print("Error saving context \(error)")
         }
+        //can create error so you need a do-catch block
         
         self.tableView.reloadData()
         //line is necessary to actually getting what we typed in the textfield into the cells
@@ -144,20 +174,76 @@ class TodoListViewController: UITableViewController {
         
     }
     
-    func loadItems() {
-        if let data =  try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print ("Error decoding item array, \(error)")
-            }
+////CoreData Step 4 (loadItems(with: )):
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+        //'with' is the external parameter; it's what you'd use in other functions when calling loadItems(with: )
+        //'request' is what's referenced and used inside this function
+        //default value when called with just parenthesis is just Item.fetchRequest()
+        
+        //MUST specify data type as well the type of the entity that you're trying to request
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        } else {
+            request.predicate = categoryPredicate
         }
+        
+        
+        do {
+            itemArray = try context.fetch(request)
+            //general request that just gets everything we have in our persistent container
+        } catch {
+            print("Error fetching data from context \(error)")
+        }
+        
+        tableView.reloadData()
     }
+    
+
     
 
 
 
 
 }
+
+//MARK: - Search bar methods
+extension TodoListViewController: UISearchBarDelegate {
+    //people make extensions like this instead of writing the code in the class itself so that all the code is neatly separated
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        //what happens when user clicks on searchBar
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        //when we click searchBar, whatever is in the searchBar at that time point is going to be passed into this method and replacing the '%@'
+        //[cd] makes it case-insensitive and diacritical-insensitive
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        //sorts code based on title
+    
+        loadItems(with: request, predicate: predicate)
+        
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            //delegate method will trigger whenever text is changed and has gone down to 0 (when click the cross/'x' button)
+            loadItems()
+            
+            DispatchQueue.main.async{
+                //DispatchQueue is in charge of asigning the roles of all the threads
+                //necessary to specify that the we are affecting the main thread
+                searchBar.resignFirstResponder()
+                //makes the searchBar no longer the thing that is currently selected
+            }
+            
+        }
+    }
+    
+}
+
+
 
