@@ -7,7 +7,7 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -17,47 +17,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         //first thing that happens; runs before any of the other app even launches
+        
+        //print(Realm.Configuration.defaultConfiguration.fileURL)
+
+        
+        do {
+            _ = try Realm()
+        } catch {
+            print("Error initializing new realm, \(error)")
+        }
+        
+        
+        
+        
 
         return true
     }
-
-    func applicationWillTerminate(_ application: UIApplication) {
-
-        self.saveContext()
-    }
-    
-    // MARK: - Core Data stack
-    
-    lazy var persistentContainer: NSPersistentContainer = {
-        //NSPersistentContainer is a SQLite container database
-
-        let container = NSPersistentContainer(name: "DataModel")
-        container.loadPersistentStores(completionHandler: { (storeDescription, error) in
-            if let error = error as NSError? {
-
-                fatalError("Unresolved error \(error), \(error.userInfo)")
-            }
-        })
-        return container
-    }()
-    
-    // MARK: - Core Data Saving support
-    
-    func saveContext () {
-        let context = persistentContainer.viewContext
-        //context is an area where you change your data; you can undo/redo until you're happy with your data at which point you can save the data in your context (temporary area) to the container (permanent storage)
-        if context.hasChanges {
-            do {
-                try context.save()
-            } catch {
-
-                let nserror = error as NSError
-                fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
-            }
-        }
-    }
-
-
 
 }
 
